@@ -8,6 +8,20 @@ function formatDate(d) {
   return `${day}.${m}.${y}`
 }
 
+function parseBody(req) {
+  return new Promise((resolve) => {
+    if (req.body) return resolve(req.body)
+    const chunks = []
+    req.on('data', c => chunks.push(c))
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString())) }
+      catch { resolve({}) }
+    })
+  })
+}
+
+export const config = { api: { bodyParser: false } }
+
 export default async function handler(req, res) {
   if (!checkAuth(req, res)) return
   try {
@@ -23,7 +37,8 @@ export default async function handler(req, res) {
       }))
     }
     if (req.method === 'POST') {
-      const { Datum, ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, Poznamka } = req.body
+      const body = await parseBody(req)
+      const { Datum, ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, Poznamka } = body
       const km = parseFloat(KmPo) - parseFloat(KmPred)
       const cena = (parseFloat(Litrov) * parseFloat(CenaLiter)).toFixed(2)
       const spotreba = km > 0 ? ((parseFloat(Litrov) / km) * 100).toFixed(2) : '0'
