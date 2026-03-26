@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       return res.json({ ok: true })
     }
     if (req.method === 'DELETE') {
-      const row = parseInt(req.query._row || req.body?._row)
+      const row = parseInt(req.query._row)
       if (!row || isNaN(row)) return res.status(400).json({ error: 'Missing or invalid _row' })
       await deleteRow('Servisy', row)
       return res.json({ ok: true })
