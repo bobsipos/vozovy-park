@@ -1,0 +1,7 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f1117; }
+input:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+button:hover { opacity: 0.9; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #1a1d27; }
+::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 3px; }
