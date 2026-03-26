@@ -155,9 +155,25 @@ export default function Dashboard() {
   }
 
   const today = new Date().toISOString().split('T')[0]
+  
+  function parseDateSk(dateStr) {
+    if (!dateStr) return null
+    const d = new Date(dateStr.split('.').reverse().join('-'))
+    return isNaN(d) ? null : d
+  }
+
   const stkWarn = vehicles.filter(v => {
     if (!v.STK) return false
-    const d = new Date(v.STK.split('.').reverse().join('-'))
+    const d = parseDateSk(v.STK)
+    if (!d) return false
+    const diff = (d - new Date()) / 86400000
+    return diff < 30
+  })
+
+  const poiWarn = vehicles.filter(v => {
+    if (!v.Poistenie) return false
+    const d = parseDateSk(v.Poistenie)
+    if (!d) return false
     const diff = (d - new Date()) / 86400000
     return diff < 30
   })
@@ -165,6 +181,20 @@ export default function Dashboard() {
   const totalFuelCost = fuel.reduce((s, f) => s + parseFloat(f.CenaCelkom || 0), 0)
   const totalServiceCost = services.reduce((s, sv) => s + parseFloat(sv.Naklady || 0), 0)
   const avgConsumption = fuel.length ? (fuel.reduce((s, f) => s + parseFloat(f.Spotreba || 0), 0) / fuel.filter(f => f.Spotreba).length).toFixed(2) : 0
+
+  // Súhrn nákladov podľa vozidla
+  const costByVehicle = {}
+  vehicles.forEach(v => {
+    if (!v.ECV) return
+    costByVehicle[v.ECV] = { ecv: v.ECV, znacka: v.Znacka, model: v.Model, fuel: 0, service: 0 }
+  })
+  fuel.forEach(f => {
+    if (costByVehicle[f.ECV]) costByVehicle[f.ECV].fuel += parseFloat(f.CenaCelkom || 0)
+  })
+  services.forEach(sv => {
+    if (costByVehicle[sv.ECV]) costByVehicle[sv.ECV].service += parseFloat(sv.Naklady || 0)
+  })
+  const costSummary = Object.values(costByVehicle).filter(c => c.fuel > 0 || c.service > 0).sort((a, b) => (b.fuel + b.service) - (a.fuel + a.service))
 
   const ecvOptions = vehicles.map(v => v.ECV).filter(Boolean)
 
@@ -206,12 +236,44 @@ export default function Dashboard() {
 
               {stkWarn.length > 0 && (
                 <div style={{ ...s.card, border: '1px solid #7f1d1d', background: '#1a0f0f' }}>
-                  <div style={{ color: '#ef4444', fontWeight: 600, marginBottom: 10 }}>⚠ Upozornenia — STK / Poistenie</div>
+                  <div style={{ color: '#ef4444', fontWeight: 600, marginBottom: 10 }}>⚠ Upozornenia — STK</div>
                   {stkWarn.map((v, i) => (
                     <div key={i} style={{ fontSize: 13, color: '#fca5a5', padding: '4px 0' }}>
                       <span style={s.ecv}>{v.ECV}</span> — {v.Znacka} {v.Model} — STK: {v.STK}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {poiWarn.length > 0 && (
+                <div style={{ ...s.card, border: '1px solid #78350f', background: '#1a150a' }}>
+                  <div style={{ color: '#f59e0b', fontWeight: 600, marginBottom: 10 }}>⚠ Upozornenia — Poistenie</div>
+                  {poiWarn.map((v, i) => (
+                    <div key={i} style={{ fontSize: 13, color: '#fcd34d', padding: '4px 0' }}>
+                      <span style={s.ecv}>{v.ECV}</span> — {v.Znacka} {v.Model} — Poistenie do: {v.Poistenie}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {costSummary.length > 0 && (
+                <div style={s.card}>
+                  <div style={s.cardTitle}>Náklady podľa vozidla</div>
+                  <table style={s.table}>
+                    <thead><tr>
+                      <th style={s.th}>EČV</th><th style={s.th}>Vozidlo</th>
+                      <th style={s.th}>Palivo €</th><th style={s.th}>Servis €</th><th style={s.th}>Celkom €</th>
+                    </tr></thead>
+                    <tbody>{costSummary.map((c, i) => (
+                      <tr key={i}>
+                        <td style={{ ...s.td, ...s.ecv }}>{c.ecv}</td>
+                        <td style={s.td}>{c.znacka} {c.model}</td>
+                        <td style={{ ...s.td, ...s.mono }}>{c.fuel.toFixed(2)} €</td>
+                        <td style={{ ...s.td, ...s.mono }}>{c.service.toFixed(2)} €</td>
+                        <td style={{ ...s.td, ...s.mono, fontWeight: 600 }}>{(c.fuel + c.service).toFixed(2)} €</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
                 </div>
               )}
 
@@ -263,8 +325,10 @@ export default function Dashboard() {
                     <th style={s.th}>Palivo</th><th style={s.th}>Zamestnanec</th><th style={s.th}>Oddelenie</th>
                     <th style={s.th}>Stav</th><th style={s.th}>STK</th><th style={s.th}>Najazdené</th><th style={s.th}></th>
                   </tr></thead>
-                  <tbody>{vehicles.map((v, i) => (
-                    <tr key={i}>
+                  <tbody>{vehicles.map((v, i) => {
+                    const rowBg = v.Stav === 'V servise' ? 'rgba(59,130,246,0.06)' : v.Stav === 'Vyradené' ? 'rgba(107,114,128,0.08)' : 'transparent'
+                    return (
+                    <tr key={i} style={{ background: rowBg }}>
                       <td style={{ ...s.td, ...s.ecv }}>{v.ECV}</td>
                       <td style={s.td}>{v.Znacka}</td>
                       <td style={s.td}>{v.Model}</td>
@@ -282,7 +346,8 @@ export default function Dashboard() {
                         </div>
                       </td>
                     </tr>
-                  ))}</tbody>
+                    )
+                  })}</tbody>
                 </table>
                 {vehicles.length === 0 && <div style={{ color: '#6b7280', textAlign: 'center', padding: 24 }}>Žiadne vozidlá. Pridajte prvé vozidlo.</div>}
               </div>
