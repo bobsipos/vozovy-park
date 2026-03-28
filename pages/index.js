@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { useState, useEffect } from 'react'
- 
- 
+
+
 function authFetch(url, options = {}) {
   const token = typeof window !== 'undefined' ? (localStorage.getItem('vp_token') || '') : ''
   return fetch(url, {
@@ -13,13 +13,13 @@ function authFetch(url, options = {}) {
     },
   })
 }
- 
+
 const TABS = ['Dashboard', 'Vozidlá', 'Tankovania', 'Servisy']
- 
+
 const STAV_OPTIONS = ['Aktívne', 'V servise', 'Vyradené']
 const PALIVO_OPTIONS = ['Diesel', 'Benzín', 'Elektro', 'Hybrid', 'CNG']
 const SERVIS_TYPES = ['Výmena oleja', 'Pneumatiky', 'STK + EK', 'Oprava', 'Údržba', 'Iné']
- 
+
 const s = {
   page: { minHeight: '100vh', background: '#0f1117', color: '#f1f0ec', fontFamily: "'DM Sans', sans-serif" },
   header: { borderBottom: '1px solid #1e2130', padding: '0 32px', position: 'sticky', top: 0, background: '#0f1117', zIndex: 100 },
@@ -54,7 +54,7 @@ const s = {
   ecv: { color: '#3b82f6', fontFamily: 'DM Mono, monospace', fontWeight: 500 },
   mono: { fontFamily: 'DM Mono, monospace' },
 }
- 
+
 function Modal({ title, onClose, children }) {
   return (
     <div style={s.modal} onClick={e => e.target === e.currentTarget && onClose()}>
@@ -68,7 +68,7 @@ function Modal({ title, onClose, children }) {
     </div>
   )
 }
- 
+
 function Field({ label, children }) {
   return (
     <div>
@@ -77,7 +77,7 @@ function Field({ label, children }) {
     </div>
   )
 }
- 
+
 export default function Dashboard() {
   const [tab, setTab] = useState('Dashboard')
   const [vehicles, setVehicles] = useState([])
@@ -87,7 +87,7 @@ export default function Dashboard() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
- 
+
   async function load() {
     setLoading(true)
     try {
@@ -102,20 +102,20 @@ export default function Dashboard() {
     } catch (e) { console.error(e) }
     setLoading(false)
   }
- 
+
   useEffect(() => {
     const token = localStorage.getItem('vp_token')
     if (!token) { window.location.href = '/login'; return }
     load()
   }, [])
- 
+
   function openModal(type, data = {}) {
     setModal(type)
     setForm(data)
   }
- 
+
   function closeModal() { setModal(null); setForm({}) }
- 
+
   async function saveVehicle() {
     setSaving(true)
     const method = form._row ? 'PUT' : 'POST'
@@ -124,15 +124,17 @@ export default function Dashboard() {
     setSaving(false)
     closeModal()
   }
- 
+
   async function saveFuel() {
     setSaving(true)
-    await authFetch('/api/fuel', { method: 'POST', body: JSON.stringify(form) })
+    const selV = vehicles.find(v => v.ECV === form.ECV)
+    const payload = { ...form, JeMth: selV?.Motohodiny === 'Áno' ? 'Áno' : 'Nie' }
+    await authFetch('/api/fuel', { method: 'POST', body: JSON.stringify(payload) })
     await load()
     setSaving(false)
     closeModal()
   }
- 
+
   async function saveService() {
     setSaving(true)
     await authFetch('/api/service', { method: 'POST', body: JSON.stringify(form) })
@@ -140,7 +142,7 @@ export default function Dashboard() {
     setSaving(false)
     closeModal()
   }
- 
+
   async function deleteItem(endpoint, row) {
     if (!row) { alert('Chyba: chýba číslo riadku'); return }
     if (!confirm('Naozaj chcete vymazať tento záznam?')) return
@@ -153,7 +155,7 @@ export default function Dashboard() {
     } catch (e) { alert('Chyba pri mazaní: ' + e.message); return }
     await load()
   }
- 
+
   const today = new Date().toISOString().split('T')[0]
   
   function parseDateSk(dateStr) {
@@ -161,7 +163,7 @@ export default function Dashboard() {
     const d = new Date(dateStr.split('.').reverse().join('-'))
     return isNaN(d) ? null : d
   }
- 
+
   const stkWarn = vehicles.filter(v => {
     if (!v.STK) return false
     const d = parseDateSk(v.STK)
@@ -169,7 +171,7 @@ export default function Dashboard() {
     const diff = (d - new Date()) / 86400000
     return diff < 30
   })
- 
+
   const poiWarn = vehicles.filter(v => {
     if (!v.Poistenie) return false
     const d = parseDateSk(v.Poistenie)
@@ -177,11 +179,11 @@ export default function Dashboard() {
     const diff = (d - new Date()) / 86400000
     return diff < 30
   })
- 
+
   const totalFuelCost = fuel.reduce((s, f) => s + parseFloat(f.CenaCelkom || 0), 0)
   const totalServiceCost = services.reduce((s, sv) => s + parseFloat(sv.Naklady || 0), 0)
   const avgConsumption = fuel.length ? (fuel.reduce((s, f) => s + parseFloat(f.Spotreba || 0), 0) / fuel.filter(f => f.Spotreba).length).toFixed(2) : 0
- 
+
   // Súhrn nákladov podľa vozidla
   const costByVehicle = {}
   vehicles.forEach(v => {
@@ -195,9 +197,9 @@ export default function Dashboard() {
     if (costByVehicle[sv.ECV]) costByVehicle[sv.ECV].service += parseFloat(sv.Naklady || 0)
   })
   const costSummary = Object.values(costByVehicle).filter(c => c.fuel > 0 || c.service > 0).sort((a, b) => (b.fuel + b.service) - (a.fuel + a.service))
- 
+
   const ecvOptions = vehicles.map(v => v.ECV).filter(Boolean)
- 
+
   return (
     <>
       <Head>
@@ -217,10 +219,10 @@ export default function Dashboard() {
             <button onClick={() => { localStorage.removeItem('vp_token'); location.href = '/login'; }} style={{ background: 'transparent', border: '1px solid #2a2d3a', color: '#9ca3af', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Odhlásiť</button>
           </div>
         </div>
- 
+
         <div style={s.main}>
           {loading && <div style={{ color: '#6b7280', textAlign: 'center', padding: 40 }}>Načítavam dáta...</div>}
- 
+
           {!loading && tab === 'Dashboard' && (
             <>
               <div style={s.kpiGrid}>
@@ -233,7 +235,7 @@ export default function Dashboard() {
                 <div style={s.kpi}><div style={s.kpiLabel}>Priem. spotreba</div><div style={s.kpiVal()}>{avgConsumption} l/100</div></div>
                 <div style={s.kpi}><div style={s.kpiLabel}>Záznamy tankovania</div><div style={s.kpiVal()}>{fuel.length}</div></div>
               </div>
- 
+
               {stkWarn.length > 0 && (
                 <div style={{ ...s.card, border: '1px solid #7f1d1d', background: '#1a0f0f' }}>
                   <div style={{ color: '#ef4444', fontWeight: 600, marginBottom: 10 }}>⚠ Upozornenia — STK</div>
@@ -244,7 +246,7 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
- 
+
               {poiWarn.length > 0 && (
                 <div style={{ ...s.card, border: '1px solid #78350f', background: '#1a150a' }}>
                   <div style={{ color: '#f59e0b', fontWeight: 600, marginBottom: 10 }}>⚠ Upozornenia — Poistenie</div>
@@ -255,7 +257,7 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
- 
+
               {costSummary.length > 0 && (
                 <div style={s.card}>
                   <div style={s.cardTitle}>Náklady podľa vozidla</div>
@@ -276,24 +278,28 @@ export default function Dashboard() {
                   </table>
                 </div>
               )}
- 
+
               <div style={s.card}>
                 <div style={s.cardTitle}>Posledné tankovania</div>
                 <table style={s.table}>
                   <thead><tr><th style={s.th}>Dátum</th><th style={s.th}>EČV</th><th style={s.th}>Vodič</th><th style={s.th}>Litrov</th><th style={s.th}>Cena €</th><th style={s.th}>Spotreba</th></tr></thead>
-                  <tbody>{fuel.slice(-5).reverse().map((f, i) => (
+                  <tbody>{fuel.slice(-5).reverse().map((f, i) => {
+                    const fV = vehicles.find(v => v.ECV === f.ECV)
+                    const spotUnit = fV?.Motohodiny === 'Áno' ? 'l/mth' : 'l/100'
+                    return (
                     <tr key={i}>
                       <td style={{ ...s.td, ...s.mono, fontSize: 12, color: '#9ca3af' }}>{f.Datum}</td>
                       <td style={{ ...s.td, ...s.ecv }}>{f.ECV}</td>
                       <td style={s.td}>{f.Vodic}</td>
                       <td style={{ ...s.td, ...s.mono }}>{f.Litrov} l</td>
                       <td style={{ ...s.td, ...s.mono }}>{parseFloat(f.CenaCelkom || 0).toFixed(2)} €</td>
-                      <td style={{ ...s.td, ...s.mono }}>{f.Spotreba} l/100</td>
+                      <td style={{ ...s.td, ...s.mono }}>{f.Spotreba} {spotUnit}</td>
                     </tr>
-                  ))}</tbody>
+                    )
+                  })}</tbody>
                 </table>
               </div>
- 
+
               <div style={s.card}>
                 <div style={s.cardTitle}>Posledné servisy</div>
                 <table style={s.table}>
@@ -311,7 +317,7 @@ export default function Dashboard() {
               </div>
             </>
           )}
- 
+
           {!loading && tab === 'Vozidlá' && (
             <div style={s.card}>
               <div style={s.cardTitle}>
@@ -354,7 +360,7 @@ export default function Dashboard() {
               </div>
             </div>
           )}
- 
+
           {!loading && tab === 'Tankovania' && (
             <div style={s.card}>
               <div style={s.cardTitle}>
@@ -365,29 +371,35 @@ export default function Dashboard() {
                 <table style={s.table}>
                   <thead><tr>
                     <th style={s.th}>Dátum</th><th style={s.th}>EČV</th><th style={s.th}>Vodič</th>
-                    <th style={s.th}>Km pred</th><th style={s.th}>Km po</th><th style={s.th}>Litrov</th>
+                    <th style={s.th}>Pred</th><th style={s.th}>Po</th><th style={s.th}>Litrov</th>
                     <th style={s.th}>Cena/l</th><th style={s.th}>Celkom €</th><th style={s.th}>Spotreba</th><th style={s.th}></th>
                   </tr></thead>
-                  <tbody>{[...fuel].reverse().map((f, i) => (
+                  <tbody>{[...fuel].reverse().map((f, i) => {
+                    const fVehicle = vehicles.find(v => v.ECV === f.ECV)
+                    const isMth = fVehicle?.Motohodiny === 'Áno'
+                    const unit = isMth ? 'mth' : 'km'
+                    const spotrebaUnit = isMth ? 'l/mth' : 'l/100'
+                    return (
                     <tr key={i}>
                       <td style={{ ...s.td, ...s.mono, fontSize: 12, color: '#9ca3af' }}>{f.Datum}</td>
                       <td style={{ ...s.td, ...s.ecv }}>{f.ECV}</td>
                       <td style={s.td}>{f.Vodic}</td>
-                      <td style={{ ...s.td, ...s.mono }}>{parseInt(f.KmPred || 0).toLocaleString('sk')}</td>
-                      <td style={{ ...s.td, ...s.mono }}>{parseInt(f.KmPo || 0).toLocaleString('sk')}</td>
+                      <td style={{ ...s.td, ...s.mono }}>{parseInt(f.KmPred || 0).toLocaleString('sk')} {unit}</td>
+                      <td style={{ ...s.td, ...s.mono }}>{parseInt(f.KmPo || 0).toLocaleString('sk')} {unit}</td>
                       <td style={{ ...s.td, ...s.mono }}>{f.Litrov} l</td>
                       <td style={{ ...s.td, ...s.mono }}>{f.CenaLiter} €</td>
                       <td style={{ ...s.td, ...s.mono }}>{parseFloat(f.CenaCelkom || 0).toFixed(2)} €</td>
-                      <td style={{ ...s.td, ...s.mono }}>{f.Spotreba} l/100</td>
+                      <td style={{ ...s.td, ...s.mono }}>{f.Spotreba} {spotrebaUnit}</td>
                       <td style={s.td}><button style={s.btnSm('#ef4444')} onClick={() => deleteItem('fuel', f._row)}>Zmazať</button></td>
                     </tr>
-                  ))}</tbody>
+                    )
+                  })}</tbody>
                 </table>
                 {fuel.length === 0 && <div style={{ color: '#6b7280', textAlign: 'center', padding: 24 }}>Žiadne záznamy tankovania.</div>}
               </div>
             </div>
           )}
- 
+
           {!loading && tab === 'Servisy' && (
             <div style={s.card}>
               <div style={s.cardTitle}>
@@ -420,7 +432,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
- 
+
         {modal === 'vehicle' && (
           <Modal title={form._row ? 'Upraviť vozidlo' : 'Pridať vozidlo'} onClose={closeModal}>
             <div style={s.formGrid}>
@@ -457,7 +469,7 @@ export default function Dashboard() {
             </div>
           </Modal>
         )}
- 
+
         {modal === 'fuel' && (() => {
           const selVehicle = vehicles.find(v => v.ECV === form.ECV)
           const isMth = selVehicle?.Motohodiny === 'Áno'
@@ -486,7 +498,7 @@ export default function Dashboard() {
           </Modal>
           )
         })()}
- 
+
         {modal === 'service' && (() => {
           const selVehicle = vehicles.find(v => v.ECV === form.ECV)
           const isMth = selVehicle?.Motohodiny === 'Áno'
