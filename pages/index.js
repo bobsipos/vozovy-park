@@ -88,6 +88,7 @@ export default function Dashboard() {
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const [chartEcv, setChartEcv] = useState('')
 
   async function load() {
     setLoading(true)
@@ -212,9 +213,11 @@ export default function Dashboard() {
   const filteredFuel = fuel.filter(f => !q || [f.Datum, f.ECV, f.Vodic].join(' ').toLowerCase().includes(q))
   const filteredServices = services.filter(sv => !q || [sv.Datum, sv.ECV, sv.Typ, sv.Firma, sv.Popis].join(' ').toLowerCase().includes(q))
 
-  // Monthly costs for chart
+  // Monthly costs for chart (filtered by chartEcv)
   const monthlyData = {}
-  fuel.forEach(f => {
+  const chartFuel = chartEcv ? fuel.filter(f => f.ECV === chartEcv) : fuel
+  const chartServices = chartEcv ? services.filter(sv => sv.ECV === chartEcv) : services
+  chartFuel.forEach(f => {
     const d = f.Datum || ''
     let key = ''
     if (d.includes('.')) { const p = d.split('.'); key = `${p[2]}-${p[1]}` }
@@ -223,7 +226,7 @@ export default function Dashboard() {
     if (!monthlyData[key]) monthlyData[key] = { month: key, fuel: 0, service: 0 }
     monthlyData[key].fuel += parseFloat(f.CenaCelkom || 0)
   })
-  services.forEach(sv => {
+  chartServices.forEach(sv => {
     const d = sv.Datum || ''
     let key = ''
     if (d.includes('.')) { const p = d.split('.'); key = `${p[2]}-${p[1]}` }
@@ -329,7 +332,16 @@ export default function Dashboard() {
 
               {monthlyChart.length > 0 && (
                 <div style={s.card}>
-                  <div style={s.cardTitle}>Mesačné náklady</div>
+                  <div style={s.cardTitle}>
+                    <span>Mesačné náklady</span>
+                    <select style={{ ...s.select, width: 'auto', minWidth: 160 }} value={chartEcv} onChange={e => setChartEcv(e.target.value)}>
+                      <option value="">Všetky vozidlá</option>
+                      {ecvOptions.map(e => {
+                        const v = vehicles.find(v => v.ECV === e)
+                        return <option key={e} value={e}>{e} — {v?.Znacka} {v?.Model}</option>
+                      })}
+                    </select>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 180, padding: '10px 0' }}>
                     {monthlyChart.map((m, i) => {
                       const fuelH = (m.fuel / maxMonthlyCost) * 150
