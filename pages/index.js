@@ -87,6 +87,7 @@ export default function Dashboard() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
 
   async function load() {
     setLoading(true)
@@ -205,6 +206,35 @@ export default function Dashboard() {
   })
   const costSummary = Object.values(costByVehicle).filter(c => c.fuel > 0 || c.service > 0).sort((a, b) => (b.fuel + b.service) - (a.fuel + a.service))
 
+  // Filtered data for search
+  const q = search.toLowerCase()
+  const filteredVehicles = vehicles.filter(v => !q || [v.ECV, v.Znacka, v.Model, v.Zamestnanec, v.Oddelenie, v.Stav].join(' ').toLowerCase().includes(q))
+  const filteredFuel = fuel.filter(f => !q || [f.Datum, f.ECV, f.Vodic].join(' ').toLowerCase().includes(q))
+  const filteredServices = services.filter(sv => !q || [sv.Datum, sv.ECV, sv.Typ, sv.Firma, sv.Popis].join(' ').toLowerCase().includes(q))
+
+  // Monthly costs for chart
+  const monthlyData = {}
+  fuel.forEach(f => {
+    const d = f.Datum || ''
+    let key = ''
+    if (d.includes('.')) { const p = d.split('.'); key = `${p[2]}-${p[1]}` }
+    else if (d.includes('-')) { key = d.substring(0, 7) }
+    if (!key) return
+    if (!monthlyData[key]) monthlyData[key] = { month: key, fuel: 0, service: 0 }
+    monthlyData[key].fuel += parseFloat(f.CenaCelkom || 0)
+  })
+  services.forEach(sv => {
+    const d = sv.Datum || ''
+    let key = ''
+    if (d.includes('.')) { const p = d.split('.'); key = `${p[2]}-${p[1]}` }
+    else if (d.includes('-')) { key = d.substring(0, 7) }
+    if (!key) return
+    if (!monthlyData[key]) monthlyData[key] = { month: key, fuel: 0, service: 0 }
+    monthlyData[key].service += parseFloat(sv.Naklady || 0)
+  })
+  const monthlyChart = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)).slice(-12)
+  const maxMonthlyCost = Math.max(...monthlyChart.map(m => m.fuel + m.service), 1)
+
   const ecvOptions = vehicles.map(v => v.ECV).filter(Boolean)
 
   return (
@@ -229,6 +259,17 @@ export default function Dashboard() {
 
         <div style={s.main}>
           {loading && <div style={{ color: '#6b7280', textAlign: 'center', padding: 40 }}>Načítavam dáta...</div>}
+
+          {!loading && tab !== 'Dashboard' && (
+            <div style={{ marginBottom: 16 }}>
+              <input
+                style={{ ...s.input, maxWidth: 320 }}
+                placeholder="🔍 Hľadať (EČV, vodič, firma...)"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          )}
 
           {!loading && tab === 'Dashboard' && (
             <>
@@ -286,6 +327,37 @@ export default function Dashboard() {
                 </div>
               )}
 
+              {monthlyChart.length > 0 && (
+                <div style={s.card}>
+                  <div style={s.cardTitle}>Mesačné náklady</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 180, padding: '10px 0' }}>
+                    {monthlyChart.map((m, i) => {
+                      const fuelH = (m.fuel / maxMonthlyCost) * 150
+                      const serviceH = (m.service / maxMonthlyCost) * 150
+                      const label = m.month.split('-')[1] + '/' + m.month.split('-')[0].slice(2)
+                      return (
+                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontSize: 10, color: '#9ca3af', fontFamily: 'DM Mono, monospace' }}>{(m.fuel + m.service).toFixed(0)}€</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 40 }}>
+                            <div style={{ height: serviceH, background: '#f59e0b', borderRadius: '4px 4px 0 0', minHeight: m.service > 0 ? 2 : 0 }} title={`Servis: ${m.service.toFixed(2)} €`}></div>
+                            <div style={{ height: fuelH, background: '#3b82f6', borderRadius: serviceH > 0 ? '0' : '4px 4px 0 0', borderBottomLeftRadius: 4, borderBottomRightRadius: 4, minHeight: m.fuel > 0 ? 2 : 0 }} title={`Palivo: ${m.fuel.toFixed(2)} €`}></div>
+                          </div>
+                          <div style={{ fontSize: 10, color: '#6b7280', fontFamily: 'DM Mono, monospace' }}>{label}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af' }}>
+                      <div style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: 2 }}></div> Palivo
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af' }}>
+                      <div style={{ width: 10, height: 10, background: '#f59e0b', borderRadius: 2 }}></div> Servis
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={s.card}>
                 <div style={s.cardTitle}>Posledné tankovania</div>
                 <table style={s.table}>
@@ -338,7 +410,7 @@ export default function Dashboard() {
                     <th style={s.th}>Palivo</th><th style={s.th}>Zamestnanec</th><th style={s.th}>Oddelenie</th>
                     <th style={s.th}>Stav</th><th style={s.th}>STK</th><th style={s.th}>Najazdené</th><th style={s.th}>Mth</th><th style={s.th}></th>
                   </tr></thead>
-                  <tbody>{vehicles.map((v, i) => {
+                  <tbody>{filteredVehicles.map((v, i) => {
                     const rowBg = v.Stav === 'V servise' ? 'rgba(59,130,246,0.06)' : v.Stav === 'Vyradené' ? 'rgba(107,114,128,0.08)' : 'transparent'
                     return (
                     <tr key={i} style={{ background: rowBg }}>
@@ -381,7 +453,7 @@ export default function Dashboard() {
                     <th style={s.th}>Pred</th><th style={s.th}>Po</th><th style={s.th}>Litrov</th>
                     <th style={s.th}>Cena/l</th><th style={s.th}>Celkom €</th><th style={s.th}>Spotreba</th><th style={s.th}></th>
                   </tr></thead>
-                  <tbody>{[...fuel].reverse().map((f, i) => {
+                  <tbody>{[...filteredFuel].reverse().map((f, i) => {
                     const fVehicle = vehicles.find(v => v.ECV === f.ECV)
                     const isMth = fVehicle?.Motohodiny === 'Áno'
                     const unit = isMth ? 'mth' : 'km'
@@ -425,7 +497,7 @@ export default function Dashboard() {
                     <th style={s.th}>Popis</th><th style={s.th}>Firma</th><th style={s.th}>Km stav</th>
                     <th style={s.th}>Náklady</th><th style={s.th}>Faktúra</th><th style={s.th}></th>
                   </tr></thead>
-                  <tbody>{[...services].reverse().map((sv, i) => (
+                  <tbody>{[...filteredServices].reverse().map((sv, i) => (
                     <tr key={i}>
                       <td style={{ ...s.td, ...s.mono, fontSize: 12, color: '#9ca3af' }}>{sv.Datum}</td>
                       <td style={{ ...s.td, ...s.ecv }}>{sv.ECV}</td>
