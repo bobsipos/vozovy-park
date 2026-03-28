@@ -8,20 +8,6 @@ function formatDate(d) {
   return `${day}.${m}.${y}`
 }
 
-function parseBody(req) {
-  return new Promise((resolve) => {
-    if (req.body) return resolve(req.body)
-    const chunks = []
-    req.on('data', c => chunks.push(c))
-    req.on('end', () => {
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString())) }
-      catch { resolve({}) }
-    })
-  })
-}
-
-export const config = { api: { bodyParser: false } }
-
 export default async function handler(req, res) {
   if (!checkAuth(req, res)) return
   try {
@@ -37,11 +23,19 @@ export default async function handler(req, res) {
       }))
     }
     if (req.method === 'POST') {
-      const body = await parseBody(req)
-      const { Datum, ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, Poznamka } = body
-      const km = parseFloat(KmPo) - parseFloat(KmPred)
+      const { Datum, ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, Poznamka, JeMth } = req.body
+      const rozdiel = parseFloat(KmPo) - parseFloat(KmPred)
       const cena = (parseFloat(Litrov) * parseFloat(CenaLiter)).toFixed(2)
-      const spotreba = km > 0 ? ((parseFloat(Litrov) / km) * 100).toFixed(2) : '0'
+      let spotreba = '0'
+      if (rozdiel > 0) {
+        if (JeMth === 'Áno') {
+          // l/mth = litre / rozdiel motohodín
+          spotreba = (parseFloat(Litrov) / rozdiel).toFixed(2)
+        } else {
+          // l/100km = (litre / km) * 100
+          spotreba = ((parseFloat(Litrov) / rozdiel) * 100).toFixed(2)
+        }
+      }
       await appendRow('Tankovania', [formatDate(Datum), ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, cena, spotreba, Poznamka || ''])
       return res.json({ ok: true })
     }
