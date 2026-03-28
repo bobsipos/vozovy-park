@@ -1,4 +1,4 @@
-import { getSheet, appendRow, deleteRow } from '../../lib/sheets'
+import { getSheet, appendRow, deleteRow, updateRow } from '../../lib/sheets'
 import { checkAuth } from '../../lib/auth'
 
 function formatDate(d) {
@@ -6,6 +6,21 @@ function formatDate(d) {
   if (d.includes('.')) return d
   const [y, m, day] = d.split('-')
   return `${day}.${m}.${y}`
+}
+
+function calcFuel(body) {
+  const { KmPred, KmPo, Litrov, CenaLiter, JeMth } = body
+  const rozdiel = parseFloat(KmPo) - parseFloat(KmPred)
+  const cena = (parseFloat(Litrov) * parseFloat(CenaLiter)).toFixed(2)
+  let spotreba = '0'
+  if (rozdiel > 0) {
+    if (JeMth === 'Áno') {
+      spotreba = (parseFloat(Litrov) / rozdiel).toFixed(2)
+    } else {
+      spotreba = ((parseFloat(Litrov) / rozdiel) * 100).toFixed(2)
+    }
+  }
+  return { cena, spotreba }
 }
 
 export default async function handler(req, res) {
@@ -23,20 +38,15 @@ export default async function handler(req, res) {
       }))
     }
     if (req.method === 'POST') {
-      const { Datum, ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, Poznamka, JeMth } = req.body
-      const rozdiel = parseFloat(KmPo) - parseFloat(KmPred)
-      const cena = (parseFloat(Litrov) * parseFloat(CenaLiter)).toFixed(2)
-      let spotreba = '0'
-      if (rozdiel > 0) {
-        if (JeMth === 'Áno') {
-          // l/mth = litre / rozdiel motohodín
-          spotreba = (parseFloat(Litrov) / rozdiel).toFixed(2)
-        } else {
-          // l/100km = (litre / km) * 100
-          spotreba = ((parseFloat(Litrov) / rozdiel) * 100).toFixed(2)
-        }
-      }
+      const { Datum, ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, Poznamka } = req.body
+      const { cena, spotreba } = calcFuel(req.body)
       await appendRow('Tankovania', [formatDate(Datum), ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, cena, spotreba, Poznamka || ''])
+      return res.json({ ok: true })
+    }
+    if (req.method === 'PUT') {
+      const { _row, Datum, ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, Poznamka } = req.body
+      const { cena, spotreba } = calcFuel(req.body)
+      await updateRow('Tankovania', _row, [formatDate(Datum), ECV, Vodic, KmPred, KmPo, Litrov, CenaLiter, cena, spotreba, Poznamka || ''])
       return res.json({ ok: true })
     }
     if (req.method === 'DELETE') {
