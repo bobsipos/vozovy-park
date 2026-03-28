@@ -1,4 +1,4 @@
-import { getSheet, appendRow, deleteRow } from '../../lib/sheets'
+import { getSheet, appendRow, deleteRow, updateRow } from '../../lib/sheets'
 import { checkAuth } from '../../lib/auth'
 
 function formatDate(d) {
@@ -25,6 +25,11 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { Datum, ECV, Model, Typ, Popis, KmStav, Firma, Naklady, Faktura, DalsiServisKm, Poznamka } = req.body
       await appendRow('Servisy', [formatDate(Datum), ECV, Model, Typ, Popis, KmStav, Firma, Naklady, Faktura || '', DalsiServisKm || '', Poznamka || ''])
+      return res.json({ ok: true })
+    }
+    if (req.method === 'PUT') {
+      const { _row, Datum, ECV, Model, Typ, Popis, KmStav, Firma, Naklady, Faktura, DalsiServisKm, Poznamka } = req.body
+      await updateRow('Servisy', _row, [formatDate(Datum), ECV, Model, Typ, Popis, KmStav, Firma, Naklady, Faktura || '', DalsiServisKm || '', Poznamka || ''])
       return res.json({ ok: true })
     }
     if (req.method === 'DELETE') {
