@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { useState, useEffect } from 'react'
-
-
+ 
+ 
 function authFetch(url, options = {}) {
   const token = typeof window !== 'undefined' ? (localStorage.getItem('vp_token') || '') : ''
   return fetch(url, {
@@ -13,13 +13,13 @@ function authFetch(url, options = {}) {
     },
   })
 }
-
+ 
 const TABS = ['Dashboard', 'Vozidlá', 'Tankovania', 'Servisy']
-
+ 
 const STAV_OPTIONS = ['Aktívne', 'V servise', 'Vyradené']
 const PALIVO_OPTIONS = ['Diesel', 'Benzín', 'Elektro', 'Hybrid', 'CNG']
 const SERVIS_TYPES = ['Výmena oleja', 'Pneumatiky', 'STK + EK', 'Oprava', 'Údržba', 'Iné']
-
+ 
 const s = {
   page: { minHeight: '100vh', background: '#0f1117', color: '#f1f0ec', fontFamily: "'DM Sans', sans-serif" },
   header: { borderBottom: '1px solid #1e2130', padding: '0 32px', position: 'sticky', top: 0, background: '#0f1117', zIndex: 100 },
@@ -54,7 +54,7 @@ const s = {
   ecv: { color: '#3b82f6', fontFamily: 'DM Mono, monospace', fontWeight: 500 },
   mono: { fontFamily: 'DM Mono, monospace' },
 }
-
+ 
 function Modal({ title, onClose, children }) {
   return (
     <div style={s.modal} onClick={e => e.target === e.currentTarget && onClose()}>
@@ -68,7 +68,7 @@ function Modal({ title, onClose, children }) {
     </div>
   )
 }
-
+ 
 function Field({ label, children }) {
   return (
     <div>
@@ -77,7 +77,7 @@ function Field({ label, children }) {
     </div>
   )
 }
-
+ 
 export default function Dashboard() {
   const [tab, setTab] = useState('Dashboard')
   const [vehicles, setVehicles] = useState([])
@@ -87,7 +87,7 @@ export default function Dashboard() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
-
+ 
   async function load() {
     setLoading(true)
     try {
@@ -102,20 +102,20 @@ export default function Dashboard() {
     } catch (e) { console.error(e) }
     setLoading(false)
   }
-
+ 
   useEffect(() => {
     const token = localStorage.getItem('vp_token')
     if (!token) { window.location.href = '/login'; return }
     load()
   }, [])
-
+ 
   function openModal(type, data = {}) {
     setModal(type)
     setForm(data)
   }
-
+ 
   function closeModal() { setModal(null); setForm({}) }
-
+ 
   async function saveVehicle() {
     setSaving(true)
     const method = form._row ? 'PUT' : 'POST'
@@ -124,7 +124,7 @@ export default function Dashboard() {
     setSaving(false)
     closeModal()
   }
-
+ 
   async function saveFuel() {
     setSaving(true)
     await authFetch('/api/fuel', { method: 'POST', body: JSON.stringify(form) })
@@ -132,7 +132,7 @@ export default function Dashboard() {
     setSaving(false)
     closeModal()
   }
-
+ 
   async function saveService() {
     setSaving(true)
     await authFetch('/api/service', { method: 'POST', body: JSON.stringify(form) })
@@ -140,7 +140,7 @@ export default function Dashboard() {
     setSaving(false)
     closeModal()
   }
-
+ 
   async function deleteItem(endpoint, row) {
     if (!row) { alert('Chyba: chýba číslo riadku'); return }
     if (!confirm('Naozaj chcete vymazať tento záznam?')) return
@@ -153,7 +153,7 @@ export default function Dashboard() {
     } catch (e) { alert('Chyba pri mazaní: ' + e.message); return }
     await load()
   }
-
+ 
   const today = new Date().toISOString().split('T')[0]
   
   function parseDateSk(dateStr) {
@@ -161,7 +161,7 @@ export default function Dashboard() {
     const d = new Date(dateStr.split('.').reverse().join('-'))
     return isNaN(d) ? null : d
   }
-
+ 
   const stkWarn = vehicles.filter(v => {
     if (!v.STK) return false
     const d = parseDateSk(v.STK)
@@ -169,7 +169,7 @@ export default function Dashboard() {
     const diff = (d - new Date()) / 86400000
     return diff < 30
   })
-
+ 
   const poiWarn = vehicles.filter(v => {
     if (!v.Poistenie) return false
     const d = parseDateSk(v.Poistenie)
@@ -177,11 +177,11 @@ export default function Dashboard() {
     const diff = (d - new Date()) / 86400000
     return diff < 30
   })
-
+ 
   const totalFuelCost = fuel.reduce((s, f) => s + parseFloat(f.CenaCelkom || 0), 0)
   const totalServiceCost = services.reduce((s, sv) => s + parseFloat(sv.Naklady || 0), 0)
   const avgConsumption = fuel.length ? (fuel.reduce((s, f) => s + parseFloat(f.Spotreba || 0), 0) / fuel.filter(f => f.Spotreba).length).toFixed(2) : 0
-
+ 
   // Súhrn nákladov podľa vozidla
   const costByVehicle = {}
   vehicles.forEach(v => {
@@ -195,9 +195,9 @@ export default function Dashboard() {
     if (costByVehicle[sv.ECV]) costByVehicle[sv.ECV].service += parseFloat(sv.Naklady || 0)
   })
   const costSummary = Object.values(costByVehicle).filter(c => c.fuel > 0 || c.service > 0).sort((a, b) => (b.fuel + b.service) - (a.fuel + a.service))
-
+ 
   const ecvOptions = vehicles.map(v => v.ECV).filter(Boolean)
-
+ 
   return (
     <>
       <Head>
@@ -217,10 +217,10 @@ export default function Dashboard() {
             <button onClick={() => { localStorage.removeItem('vp_token'); location.href = '/login'; }} style={{ background: 'transparent', border: '1px solid #2a2d3a', color: '#9ca3af', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Odhlásiť</button>
           </div>
         </div>
-
+ 
         <div style={s.main}>
           {loading && <div style={{ color: '#6b7280', textAlign: 'center', padding: 40 }}>Načítavam dáta...</div>}
-
+ 
           {!loading && tab === 'Dashboard' && (
             <>
               <div style={s.kpiGrid}>
@@ -233,7 +233,7 @@ export default function Dashboard() {
                 <div style={s.kpi}><div style={s.kpiLabel}>Priem. spotreba</div><div style={s.kpiVal()}>{avgConsumption} l/100</div></div>
                 <div style={s.kpi}><div style={s.kpiLabel}>Záznamy tankovania</div><div style={s.kpiVal()}>{fuel.length}</div></div>
               </div>
-
+ 
               {stkWarn.length > 0 && (
                 <div style={{ ...s.card, border: '1px solid #7f1d1d', background: '#1a0f0f' }}>
                   <div style={{ color: '#ef4444', fontWeight: 600, marginBottom: 10 }}>⚠ Upozornenia — STK</div>
@@ -244,7 +244,7 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
-
+ 
               {poiWarn.length > 0 && (
                 <div style={{ ...s.card, border: '1px solid #78350f', background: '#1a150a' }}>
                   <div style={{ color: '#f59e0b', fontWeight: 600, marginBottom: 10 }}>⚠ Upozornenia — Poistenie</div>
@@ -255,7 +255,7 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
-
+ 
               {costSummary.length > 0 && (
                 <div style={s.card}>
                   <div style={s.cardTitle}>Náklady podľa vozidla</div>
@@ -276,7 +276,7 @@ export default function Dashboard() {
                   </table>
                 </div>
               )}
-
+ 
               <div style={s.card}>
                 <div style={s.cardTitle}>Posledné tankovania</div>
                 <table style={s.table}>
@@ -293,7 +293,7 @@ export default function Dashboard() {
                   ))}</tbody>
                 </table>
               </div>
-
+ 
               <div style={s.card}>
                 <div style={s.cardTitle}>Posledné servisy</div>
                 <table style={s.table}>
@@ -311,7 +311,7 @@ export default function Dashboard() {
               </div>
             </>
           )}
-
+ 
           {!loading && tab === 'Vozidlá' && (
             <div style={s.card}>
               <div style={s.cardTitle}>
@@ -323,7 +323,7 @@ export default function Dashboard() {
                   <thead><tr>
                     <th style={s.th}>EČV</th><th style={s.th}>Značka</th><th style={s.th}>Model</th><th style={s.th}>Rok</th>
                     <th style={s.th}>Palivo</th><th style={s.th}>Zamestnanec</th><th style={s.th}>Oddelenie</th>
-                    <th style={s.th}>Stav</th><th style={s.th}>STK</th><th style={s.th}>Najazdené</th><th style={s.th}></th>
+                    <th style={s.th}>Stav</th><th style={s.th}>STK</th><th style={s.th}>Najazdené</th><th style={s.th}>Mth</th><th style={s.th}></th>
                   </tr></thead>
                   <tbody>{vehicles.map((v, i) => {
                     const rowBg = v.Stav === 'V servise' ? 'rgba(59,130,246,0.06)' : v.Stav === 'Vyradené' ? 'rgba(107,114,128,0.08)' : 'transparent'
@@ -338,7 +338,8 @@ export default function Dashboard() {
                       <td style={s.td}>{v.Oddelenie}</td>
                       <td style={s.td}><span style={s.badge(v.Stav)}>{v.Stav}</span></td>
                       <td style={{ ...s.td, ...s.mono, color: (() => { if (!v.STK) return '#9ca3af'; const d = new Date(v.STK.split('.').reverse().join('-')); return (d - new Date()) / 86400000 < 30 ? '#ef4444' : '#d1d5db' })() }}>{v.STK}</td>
-                      <td style={{ ...s.td, ...s.mono }}>{v.Najazdene ? parseInt(v.Najazdene).toLocaleString('sk') + ' km' : ''}</td>
+                      <td style={{ ...s.td, ...s.mono }}>{v.Najazdene ? parseInt(v.Najazdene).toLocaleString('sk') + (v.Motohodiny === 'Áno' ? ' mth' : ' km') : ''}</td>
+                      <td style={s.td}>{v.Motohodiny === 'Áno' ? <span style={{ ...s.badge('V servise'), fontSize: 10 }}>⏱ MTH</span> : ''}</td>
                       <td style={s.td}>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button style={s.btnSm('#3b82f6')} onClick={() => openModal('vehicle', { ...v })}>Upraviť</button>
@@ -353,7 +354,7 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-
+ 
           {!loading && tab === 'Tankovania' && (
             <div style={s.card}>
               <div style={s.cardTitle}>
@@ -386,7 +387,7 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-
+ 
           {!loading && tab === 'Servisy' && (
             <div style={s.card}>
               <div style={s.cardTitle}>
@@ -419,7 +420,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-
+ 
         {modal === 'vehicle' && (
           <Modal title={form._row ? 'Upraviť vozidlo' : 'Pridať vozidlo'} onClose={closeModal}>
             <div style={s.formGrid}>
@@ -443,6 +444,12 @@ export default function Dashboard() {
               <Field label="Poistenie do"><input style={s.input} value={form.Poistenie || ''} onChange={e => setForm({ ...form, Poistenie: e.target.value })} placeholder="31.12.2026" /></Field>
               <Field label="Najazdené (km)"><input style={s.input} value={form.Najazdene || ''} onChange={e => setForm({ ...form, Najazdene: e.target.value })} placeholder="45000" /></Field>
               <Field label="Poznámka"><input style={s.input} value={form.Poznamka || ''} onChange={e => setForm({ ...form, Poznamka: e.target.value })} /></Field>
+              <Field label="Evidovať motohodiny">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 0' }}>
+                  <input type="checkbox" checked={form.Motohodiny === 'Áno'} onChange={e => setForm({ ...form, Motohodiny: e.target.checked ? 'Áno' : 'Nie' })} style={{ width: 18, height: 18, accentColor: '#2563eb', cursor: 'pointer' }} />
+                  <span style={{ fontSize: 13, color: form.Motohodiny === 'Áno' ? '#f1f0ec' : '#6b7280' }}>{form.Motohodiny === 'Áno' ? 'Áno — motohodiny' : 'Nie — kilometre'}</span>
+                </div>
+              </Field>
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button style={{ ...s.btn('#374151') }} onClick={closeModal}>Zrušiť</button>
@@ -450,8 +457,12 @@ export default function Dashboard() {
             </div>
           </Modal>
         )}
-
-        {modal === 'fuel' && (
+ 
+        {modal === 'fuel' && (() => {
+          const selVehicle = vehicles.find(v => v.ECV === form.ECV)
+          const isMth = selVehicle?.Motohodiny === 'Áno'
+          const unitLabel = isMth ? 'Mth' : 'Km'
+          return (
           <Modal title="Pridať tankovanie" onClose={closeModal}>
             <div style={s.formGrid}>
               <Field label="Dátum"><input type="date" style={s.input} value={form.Datum || today} onChange={e => setForm({ ...form, Datum: e.target.value })} /></Field>
@@ -462,8 +473,8 @@ export default function Dashboard() {
                 </select>
               </Field>
               <Field label="Vodič"><input style={s.input} value={form.Vodic || ''} onChange={e => setForm({ ...form, Vodic: e.target.value })} placeholder="Meno vodiča" /></Field>
-              <Field label="Km pred tankovaním"><input style={s.input} type="number" value={form.KmPred || ''} onChange={e => setForm({ ...form, KmPred: e.target.value })} /></Field>
-              <Field label="Km po tankovaní"><input style={s.input} type="number" value={form.KmPo || ''} onChange={e => setForm({ ...form, KmPo: e.target.value })} /></Field>
+              <Field label={`${unitLabel} pred tankovaním`}><input style={s.input} type="number" value={form.KmPred || ''} onChange={e => setForm({ ...form, KmPred: e.target.value })} /></Field>
+              <Field label={`${unitLabel} po tankovaní`}><input style={s.input} type="number" value={form.KmPo || ''} onChange={e => setForm({ ...form, KmPo: e.target.value })} /></Field>
               <Field label="Natankované (l)"><input style={s.input} type="number" step="0.1" value={form.Litrov || ''} onChange={e => setForm({ ...form, Litrov: e.target.value })} /></Field>
               <Field label="Cena za liter (€)"><input style={s.input} type="number" step="0.001" value={form.CenaLiter || ''} onChange={e => setForm({ ...form, CenaLiter: e.target.value })} /></Field>
               <Field label="Poznámka"><input style={s.input} value={form.Poznamka || ''} onChange={e => setForm({ ...form, Poznamka: e.target.value })} /></Field>
@@ -473,9 +484,14 @@ export default function Dashboard() {
               <button style={s.btn()} onClick={saveFuel} disabled={saving}>{saving ? 'Ukladám...' : 'Uložiť'}</button>
             </div>
           </Modal>
-        )}
-
-        {modal === 'service' && (
+          )
+        })()}
+ 
+        {modal === 'service' && (() => {
+          const selVehicle = vehicles.find(v => v.ECV === form.ECV)
+          const isMth = selVehicle?.Motohodiny === 'Áno'
+          const unitLabel = isMth ? 'Mth' : 'Km'
+          return (
           <Modal title="Pridať servis" onClose={closeModal}>
             <div style={s.formGrid}>
               <Field label="Dátum"><input type="date" style={s.input} value={form.Datum || today} onChange={e => setForm({ ...form, Datum: e.target.value })} /></Field>
@@ -493,18 +509,19 @@ export default function Dashboard() {
                 </select>
               </Field>
               <Field label="Popis práce"><input style={s.input} value={form.Popis || ''} onChange={e => setForm({ ...form, Popis: e.target.value })} placeholder="Výmena oleja + filter" /></Field>
-              <Field label="Stav km"><input style={s.input} type="number" value={form.KmStav || ''} onChange={e => setForm({ ...form, KmStav: e.target.value })} /></Field>
+              <Field label={`Stav ${unitLabel.toLowerCase()}`}><input style={s.input} type="number" value={form.KmStav || ''} onChange={e => setForm({ ...form, KmStav: e.target.value })} /></Field>
               <Field label="Servisná firma"><input style={s.input} value={form.Firma || ''} onChange={e => setForm({ ...form, Firma: e.target.value })} /></Field>
               <Field label="Náklady (€)"><input style={s.input} type="number" step="0.01" value={form.Naklady || ''} onChange={e => setForm({ ...form, Naklady: e.target.value })} /></Field>
               <Field label="Faktúra č."><input style={s.input} value={form.Faktura || ''} onChange={e => setForm({ ...form, Faktura: e.target.value })} placeholder="F2026001" /></Field>
-              <Field label="Ďalší servis (km)"><input style={s.input} type="number" value={form.DalsiServisKm || ''} onChange={e => setForm({ ...form, DalsiServisKm: e.target.value })} /></Field>
+              <Field label={`Ďalší servis (${unitLabel.toLowerCase()})`}><input style={s.input} type="number" value={form.DalsiServisKm || ''} onChange={e => setForm({ ...form, DalsiServisKm: e.target.value })} /></Field>
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button style={s.btn('#374151')} onClick={closeModal}>Zrušiť</button>
               <button style={s.btn()} onClick={saveService} disabled={saving}>{saving ? 'Ukladám...' : 'Uložiť'}</button>
             </div>
           </Modal>
-        )}
+          )
+        })()}
       </div>
     </>
   )
