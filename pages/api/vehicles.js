@@ -1,11 +1,11 @@
 import { getSheet, appendRow, deleteRow, updateRow } from '../../lib/sheets'
 import { checkAuth } from '../../lib/auth'
-
+ 
 export default async function handler(req, res) {
   if (!checkAuth(req, res)) return
   try {
     if (req.method === 'GET') {
-      const rows = await getSheet('Vozidla!A1:L200')
+      const rows = await getSheet('Vozidla!A1:M200')
       if (!rows.length) return res.json([])
       const [headers, ...data] = rows
       return res.json(data.map((row, i) => {
@@ -16,13 +16,13 @@ export default async function handler(req, res) {
       }))
     }
     if (req.method === 'POST') {
-      const { ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav, STK, Poistenie, Najazdene, Poznamka } = req.body
-      await appendRow('Vozidla', [ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav || 'Aktívne', STK, Poistenie, Najazdene, Poznamka || ''])
+      const { ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav, STK, Poistenie, Najazdene, Poznamka, Motohodiny } = req.body
+      await appendRow('Vozidla', [ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav || 'Aktívne', STK, Poistenie, Najazdene, Poznamka || '', Motohodiny || 'Nie'])
       return res.json({ ok: true })
     }
     if (req.method === 'PUT') {
-      const { _row, ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav, STK, Poistenie, Najazdene, Poznamka } = req.body
-      await updateRow('Vozidla', _row, [ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav, STK, Poistenie, Najazdene, Poznamka || ''])
+      const { _row, ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav, STK, Poistenie, Najazdene, Poznamka, Motohodiny } = req.body
+      await updateRow('Vozidla', _row, [ECV, Znacka, Model, Rok, Palivo, Zamestnanec, Oddelenie, Stav, STK, Poistenie, Najazdene, Poznamka || '', Motohodiny || 'Nie'])
       return res.json({ ok: true })
     }
     if (req.method === 'DELETE') {
