@@ -1,6 +1,6 @@
 import { getSheet, appendRow, deleteRow, updateRow } from '../../lib/sheets'
 import { checkAuth } from '../../lib/auth'
- 
+
 export default async function handler(req, res) {
   if (!checkAuth(req, res)) return
   try {
