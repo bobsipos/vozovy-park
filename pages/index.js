@@ -110,6 +110,11 @@ export default function Dashboard() {
   }, [])
 
   function openModal(type, data = {}) {
+    // Konvertuj dátum z dd.mm.rrrr na rrrr-mm-dd pre date input
+    if (data.Datum && data.Datum.includes('.')) {
+      const [d, m, y] = data.Datum.split('.')
+      data.Datum = `${y}-${m}-${d}`
+    }
     setModal(type)
     setForm(data)
   }
@@ -129,7 +134,8 @@ export default function Dashboard() {
     setSaving(true)
     const selV = vehicles.find(v => v.ECV === form.ECV)
     const payload = { ...form, JeMth: selV?.Motohodiny === 'Áno' ? 'Áno' : 'Nie' }
-    await authFetch('/api/fuel', { method: 'POST', body: JSON.stringify(payload) })
+    const method = form._row ? 'PUT' : 'POST'
+    await authFetch('/api/fuel', { method, body: JSON.stringify(payload) })
     await load()
     setSaving(false)
     closeModal()
@@ -137,7 +143,8 @@ export default function Dashboard() {
 
   async function saveService() {
     setSaving(true)
-    await authFetch('/api/service', { method: 'POST', body: JSON.stringify(form) })
+    const method = form._row ? 'PUT' : 'POST'
+    await authFetch('/api/service', { method, body: JSON.stringify(form) })
     await load()
     setSaving(false)
     closeModal()
@@ -390,7 +397,12 @@ export default function Dashboard() {
                       <td style={{ ...s.td, ...s.mono }}>{f.CenaLiter} €</td>
                       <td style={{ ...s.td, ...s.mono }}>{parseFloat(f.CenaCelkom || 0).toFixed(2)} €</td>
                       <td style={{ ...s.td, ...s.mono }}>{f.Spotreba} {spotrebaUnit}</td>
-                      <td style={s.td}><button style={s.btnSm('#ef4444')} onClick={() => deleteItem('fuel', f._row)}>Zmazať</button></td>
+                      <td style={s.td}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button style={s.btnSm('#3b82f6')} onClick={() => openModal('fuel', { ...f })}>Upraviť</button>
+                          <button style={s.btnSm('#ef4444')} onClick={() => deleteItem('fuel', f._row)}>Zmazať</button>
+                        </div>
+                      </td>
                     </tr>
                     )
                   })}</tbody>
@@ -423,7 +435,12 @@ export default function Dashboard() {
                       <td style={{ ...s.td, ...s.mono }}>{parseInt(sv.KmStav || 0).toLocaleString('sk')}</td>
                       <td style={{ ...s.td, ...s.mono }}>{parseFloat(sv.Naklady || 0).toFixed(2)} €</td>
                       <td style={{ ...s.td, ...s.mono, fontSize: 12, color: '#9ca3af' }}>{sv.Faktura}</td>
-                      <td style={s.td}><button style={s.btnSm('#ef4444')} onClick={() => deleteItem('service', sv._row)}>Zmazať</button></td>
+                      <td style={s.td}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button style={s.btnSm('#3b82f6')} onClick={() => openModal('service', { ...sv })}>Upraviť</button>
+                          <button style={s.btnSm('#ef4444')} onClick={() => deleteItem('service', sv._row)}>Zmazať</button>
+                        </div>
+                      </td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -475,7 +492,7 @@ export default function Dashboard() {
           const isMth = selVehicle?.Motohodiny === 'Áno'
           const unitLabel = isMth ? 'Mth' : 'Km'
           return (
-          <Modal title="Pridať tankovanie" onClose={closeModal}>
+          <Modal title={form._row ? 'Upraviť tankovanie' : 'Pridať tankovanie'} onClose={closeModal}>
             <div style={s.formGrid}>
               <Field label="Dátum"><input type="date" style={s.input} value={form.Datum || today} onChange={e => setForm({ ...form, Datum: e.target.value })} /></Field>
               <Field label="EČV">
@@ -504,7 +521,7 @@ export default function Dashboard() {
           const isMth = selVehicle?.Motohodiny === 'Áno'
           const unitLabel = isMth ? 'Mth' : 'Km'
           return (
-          <Modal title="Pridať servis" onClose={closeModal}>
+          <Modal title={form._row ? 'Upraviť servis' : 'Pridať servis'} onClose={closeModal}>
             <div style={s.formGrid}>
               <Field label="Dátum"><input type="date" style={s.input} value={form.Datum || today} onChange={e => setForm({ ...form, Datum: e.target.value })} /></Field>
               <Field label="EČV">
