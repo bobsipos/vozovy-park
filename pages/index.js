@@ -112,7 +112,6 @@ export default function Dashboard() {
   }, [])
 
   function openModal(type, data = {}) {
-    // Konvertuj dátum z dd.mm.rrrr na rrrr-mm-dd pre date input
     if (data.Datum && data.Datum.includes('.')) {
       const [d, m, y] = data.Datum.split('.')
       data.Datum = `${y}-${m}-${d}`
@@ -156,9 +155,7 @@ export default function Dashboard() {
     if (!row) { alert('Chyba: chýba číslo riadku'); return }
     if (!confirm('Naozaj chcete vymazať tento záznam?')) return
     try {
-      const resp = await authFetch(`/api/${endpoint}?_row=${row}`, {
-        method: 'DELETE',
-      })
+      const resp = await authFetch(`/api/${endpoint}?_row=${row}`, { method: 'DELETE' })
       const data = await resp.json()
       if (!resp.ok) { alert('Chyba pri mazaní: ' + (data.error || resp.status)); return }
     } catch (e) { alert('Chyba pri mazaní: ' + e.message); return }
@@ -166,34 +163,38 @@ export default function Dashboard() {
   }
 
   const today = new Date().toISOString().split('T')[0]
-  
+
   function parseDateSk(dateStr) {
     if (!dateStr) return null
     const d = new Date(dateStr.split('.').reverse().join('-'))
     return isNaN(d) ? null : d
   }
 
+  function dateColor(dateStr) {
+    if (!dateStr) return '#9ca3af'
+    const d = parseDateSk(dateStr)
+    if (!d) return '#9ca3af'
+    return (d - new Date()) / 86400000 < 30 ? '#ef4444' : '#d1d5db'
+  }
+
   const stkWarn = vehicles.filter(v => {
     if (!v.STK) return false
     const d = parseDateSk(v.STK)
     if (!d) return false
-    const diff = (d - new Date()) / 86400000
-    return diff < 30
+    return (d - new Date()) / 86400000 < 30
   })
 
   const poiWarn = vehicles.filter(v => {
     if (!v.Poistenie) return false
     const d = parseDateSk(v.Poistenie)
     if (!d) return false
-    const diff = (d - new Date()) / 86400000
-    return diff < 30
+    return (d - new Date()) / 86400000 < 30
   })
 
   const totalFuelCost = fuel.reduce((s, f) => s + parseFloat(f.CenaCelkom || 0), 0)
   const totalServiceCost = services.reduce((s, sv) => s + parseFloat(sv.Naklady || 0), 0)
   const avgConsumption = fuel.length ? (fuel.reduce((s, f) => s + parseFloat(f.Spotreba || 0), 0) / fuel.filter(f => f.Spotreba).length).toFixed(2) : 0
 
-  // Súhrn nákladov podľa vozidla
   const costByVehicle = {}
   vehicles.forEach(v => {
     if (!v.ECV) return
@@ -207,13 +208,11 @@ export default function Dashboard() {
   })
   const costSummary = Object.values(costByVehicle).filter(c => c.fuel > 0 || c.service > 0).sort((a, b) => (b.fuel + b.service) - (a.fuel + a.service))
 
-  // Filtered data for search
   const q = search.toLowerCase()
   const filteredVehicles = vehicles.filter(v => !q || [v.ECV, v.Znacka, v.Model, v.Zamestnanec, v.Oddelenie, v.Stav].join(' ').toLowerCase().includes(q))
   const filteredFuel = fuel.filter(f => !q || [f.Datum, f.ECV, f.Vodic].join(' ').toLowerCase().includes(q))
   const filteredServices = services.filter(sv => !q || [sv.Datum, sv.ECV, sv.Typ, sv.Firma, sv.Popis].join(' ').toLowerCase().includes(q))
 
-  // Monthly costs for chart (filtered by chartEcv)
   const monthlyData = {}
   const chartFuel = chartEcv ? fuel.filter(f => f.ECV === chartEcv) : fuel
   const chartServices = chartEcv ? services.filter(sv => sv.ECV === chartEcv) : services
@@ -420,7 +419,7 @@ export default function Dashboard() {
                   <thead><tr>
                     <th style={s.th}>EČV</th><th style={s.th}>Značka</th><th style={s.th}>Model</th><th style={s.th}>Rok</th>
                     <th style={s.th}>Palivo</th><th style={s.th}>Zamestnanec</th><th style={s.th}>Oddelenie</th>
-                    <th style={s.th}>Stav</th><th style={s.th}>STK</th><th style={s.th}>Najazdené</th><th style={s.th}>Mth</th><th style={s.th}></th>
+                    <th style={s.th}>Stav</th><th style={s.th}>STK</th><th style={s.th}>Poistenie</th><th style={s.th}>Najazdené</th><th style={s.th}>Mth</th><th style={s.th}></th>
                   </tr></thead>
                   <tbody>{filteredVehicles.map((v, i) => {
                     const rowBg = v.Stav === 'V servise' ? 'rgba(59,130,246,0.06)' : v.Stav === 'Vyradené' ? 'rgba(107,114,128,0.08)' : 'transparent'
@@ -434,7 +433,8 @@ export default function Dashboard() {
                       <td style={s.td}>{v.Zamestnanec}</td>
                       <td style={s.td}>{v.Oddelenie}</td>
                       <td style={s.td}><span style={s.badge(v.Stav)}>{v.Stav}</span></td>
-                      <td style={{ ...s.td, ...s.mono, color: (() => { if (!v.STK) return '#9ca3af'; const d = new Date(v.STK.split('.').reverse().join('-')); return (d - new Date()) / 86400000 < 30 ? '#ef4444' : '#d1d5db' })() }}>{v.STK}</td>
+                      <td style={{ ...s.td, ...s.mono, color: dateColor(v.STK) }}>{v.STK}</td>
+                      <td style={{ ...s.td, ...s.mono, color: dateColor(v.Poistenie) }}>{v.Poistenie}</td>
                       <td style={{ ...s.td, ...s.mono }}>{v.Najazdene ? parseInt(v.Najazdene).toLocaleString('sk') + (v.Motohodiny === 'Áno' ? ' mth' : ' km') : ''}</td>
                       <td style={s.td}>{v.Motohodiny === 'Áno' ? <span style={{ ...s.badge('V servise'), fontSize: 10 }}>⏱ MTH</span> : ''}</td>
                       <td style={s.td}>
